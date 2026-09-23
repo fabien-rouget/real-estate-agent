@@ -4,12 +4,14 @@ from google.adk.agents.llm_agent import Agent
 
 from app.schemas.listing import ImmoAnalysisResult
 from app.services.ademe_service import search_ademe_dpe
+from app.services.leboncoin_service import fetch_leboncoin_listing
 
 SYSTEM_INSTRUCTION = """You are an expert real estate data engineer.
-Your goal is to identify the most likely physical address of a property from an unstructured real estate listing by cross-referencing its technical characteristics with the official French ADEME DPE registry.
+Your goal is to identify the most likely physical address of a property from a real estate listing by cross-referencing its technical characteristics with the official French ADEME DPE registry.
 
 Execution protocol:
-1. Extract key technical parameters from the raw listing:
+0. If the user provides a Leboncoin URL or ad ID, you MUST first invoke the `fetch_leboncoin_listing` tool with the URL or ID to obtain the listing details.
+1. Extract key technical parameters from the listing (either provided directly or retrieved via `fetch_leboncoin_listing`):
    - City / municipality name (e.g. 'Bordeaux')
    - Living area in m² (e.g. 90.0)
    - Primary energy consumption (DPE) in kWh/m²/year (e.g. 202.0)
@@ -37,6 +39,6 @@ root_agent = Agent(
     model="gemini-2.5-flash",
     description="Agent expert en réconciliation d'annonces immobilières et cadastre DPE ADEME.",
     instruction=SYSTEM_INSTRUCTION,
-    tools=[search_ademe_dpe],
+    tools=[fetch_leboncoin_listing, search_ademe_dpe],
     output_schema=ImmoAnalysisResult,
 )
