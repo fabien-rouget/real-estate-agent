@@ -23,6 +23,11 @@ class AdemeDpeRecord(BaseModel):
         alias="adresse_brut",
         description="Raw address as entered by the certified inspector",
     )
+    address_complement: str | None = Field(
+        default=None,
+        alias="complement_adresse_logement",
+        description="Address complement (building, apartment, floor)",
+    )
     postal_code: str = Field(
         default="",
         alias="code_postal_ban",
@@ -71,5 +76,8 @@ class AdemeDpeRecord(BaseModel):
 
     @property
     def resolved_address(self) -> str:
-        """Returns the best available street address string."""
-        return (self.address or self.address_raw or "Address not specified").strip()
+        """Returns the best available street address string, including complement if present."""
+        base = (self.address or self.address_raw or "Address not specified").strip()
+        if self.address_complement:
+            return f"{base}, {self.address_complement.strip()}"
+        return base

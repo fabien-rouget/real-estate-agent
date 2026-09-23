@@ -31,7 +31,7 @@ class TestAdemeMcpServer:
         assert "city" in dpe_tool.input_schema["properties"]
         assert "surface" in dpe_tool.input_schema["properties"]
         assert "dpe_kwh" in dpe_tool.input_schema["properties"]
-        assert dpe_tool.input_schema["required"] == ["city", "surface", "dpe_kwh"]
+        assert dpe_tool.input_schema["required"] == ["city", "surface"]
 
     @pytest.mark.anyio
     async def test_mcp_tool_call_execution(self):
@@ -63,6 +63,7 @@ class TestAdemeMcpServer:
                 city="Bordeaux",
                 surface=70.0,
                 dpe_kwh=150.0,
+                energy_letter="",
                 dpe_date="",
                 construction_year=0,
                 tolerance_surface=2.0,
