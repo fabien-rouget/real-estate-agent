@@ -1,0 +1,30 @@
+[project]
+name = "real-estate-agent"
+version = "0.1.0"
+description = "Autonomous AI agent PoC reconciling real estate listings with French ADEME open data."
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+ignore = [
+    "E501", # line too long (handled by formatting)
+    "B008", # do not perform function calls in argument defaults
+    "E402", # module level import not at top of file (needed for load_dotenv and logging config)
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests/unit"]
+python_files = ["test_*.py"]

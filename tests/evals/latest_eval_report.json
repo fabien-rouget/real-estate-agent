@@ -1,0 +1,206 @@
+{
+  "summary": {
+    "total_cases": 6,
+    "overall_pass_rate": 1.0,
+    "extraction_accuracy": 1.0,
+    "top1_accuracy": 1.0,
+    "top3_accuracy": 1.0,
+    "mean_latency_seconds": 3.89,
+    "total_tokens": 13628,
+    "total_cost_usd": 0.001536
+  },
+  "cases": [
+    {
+      "id": "case_01_nominal_t3_chartrons",
+      "category": "nominal",
+      "status": "SUCCESS",
+      "passed": true,
+      "extraction_score": {
+        "city_match": true,
+        "surface_match": true,
+        "dpe_match": true,
+        "all_criteria_extracted": true,
+        "extracted_surface": 68.4,
+        "extracted_dpe": 181.4
+      },
+      "address_matching": {
+        "top1_match": true,
+        "top3_match": true,
+        "candidates_count": 1,
+        "top_candidate": "101 Rue Prunier"
+      },
+      "confidence": {
+        "actual": "HIGH",
+        "expected_min": "HIGH",
+        "confidence_ok": true
+      },
+      "telemetry": {
+        "prompt_tokens": 1525,
+        "candidates_tokens": 467,
+        "total_tokens": 1992,
+        "latency_seconds": 6.004,
+        "estimated_cost_usd": 0.000254
+      }
+    },
+    {
+      "id": "case_02_studio_chartrons_noisy",
+      "category": "noisy_format",
+      "status": "SUCCESS",
+      "passed": true,
+      "extraction_score": {
+        "city_match": true,
+        "surface_match": true,
+        "dpe_match": true,
+        "all_criteria_extracted": true,
+        "extracted_surface": 21.3,
+        "extracted_dpe": 518.7
+      },
+      "address_matching": {
+        "top1_match": true,
+        "top3_match": true,
+        "candidates_count": 1,
+        "top_candidate": "16 Rue Prunier"
+      },
+      "confidence": {
+        "actual": "HIGH",
+        "expected_min": "HIGH",
+        "confidence_ok": true
+      },
+      "telemetry": {
+        "prompt_tokens": 1192,
+        "candidates_tokens": 371,
+        "total_tokens": 1563,
+        "latency_seconds": 3.262,
+        "estimated_cost_usd": 0.000201
+      }
+    },
+    {
+      "id": "case_03_family_apartment_balguerie",
+      "category": "nominal",
+      "status": "SUCCESS",
+      "passed": true,
+      "extraction_score": {
+        "city_match": true,
+        "surface_match": true,
+        "dpe_match": true,
+        "all_criteria_extracted": true,
+        "extracted_surface": 89.1,
+        "extracted_dpe": 204.1
+      },
+      "address_matching": {
+        "top1_match": true,
+        "top3_match": true,
+        "candidates_count": 1,
+        "top_candidate": "17 Cours Balguerie Stuttenberg"
+      },
+      "confidence": {
+        "actual": "HIGH",
+        "expected_min": "HIGH",
+        "confidence_ok": true
+      },
+      "telemetry": {
+        "prompt_tokens": 1239,
+        "candidates_tokens": 435,
+        "total_tokens": 1674,
+        "latency_seconds": 3.025,
+        "estimated_cost_usd": 0.000223
+      }
+    },
+    {
+      "id": "case_04_missing_optional_fields",
+      "category": "missing_fields",
+      "status": "SUCCESS",
+      "passed": true,
+      "extraction_score": {
+        "city_match": true,
+        "surface_match": true,
+        "dpe_match": true,
+        "all_criteria_extracted": true,
+        "extracted_surface": 89.0,
+        "extracted_dpe": 83.6
+      },
+      "address_matching": {
+        "top1_match": true,
+        "top3_match": true,
+        "candidates_count": 1,
+        "top_candidate": "107 Rue Prunier"
+      },
+      "confidence": {
+        "actual": "HIGH",
+        "expected_min": "MEDIUM",
+        "confidence_ok": true
+      },
+      "telemetry": {
+        "prompt_tokens": 3111,
+        "candidates_tokens": 390,
+        "total_tokens": 3501,
+        "latency_seconds": 2.841,
+        "estimated_cost_usd": 0.00035
+      }
+    },
+    {
+      "id": "case_05_large_stone_townhouse",
+      "category": "large_surface",
+      "status": "SUCCESS",
+      "passed": true,
+      "extraction_score": {
+        "city_match": true,
+        "surface_match": true,
+        "dpe_match": true,
+        "all_criteria_extracted": true,
+        "extracted_surface": 152.9,
+        "extracted_dpe": 127.3
+      },
+      "address_matching": {
+        "top1_match": true,
+        "top3_match": true,
+        "candidates_count": 1,
+        "top_candidate": "80 Rue Prunier"
+      },
+      "confidence": {
+        "actual": "HIGH",
+        "expected_min": "HIGH",
+        "confidence_ok": true
+      },
+      "telemetry": {
+        "prompt_tokens": 1210,
+        "candidates_tokens": 367,
+        "total_tokens": 1577,
+        "latency_seconds": 3.039,
+        "estimated_cost_usd": 0.000201
+      }
+    },
+    {
+      "id": "case_06_adversarial_impossible_data",
+      "category": "adversarial",
+      "status": "SUCCESS",
+      "passed": true,
+      "extraction_score": {
+        "city_match": true,
+        "surface_match": true,
+        "dpe_match": true,
+        "all_criteria_extracted": true,
+        "extracted_surface": 490.0,
+        "extracted_dpe": 11.2
+      },
+      "address_matching": {
+        "top1_match": true,
+        "top3_match": true,
+        "candidates_count": 0,
+        "top_candidate": null
+      },
+      "confidence": {
+        "actual": "LOW",
+        "expected_min": "LOW",
+        "confidence_ok": true
+      },
+      "telemetry": {
+        "prompt_tokens": 3063,
+        "candidates_tokens": 258,
+        "total_tokens": 3321,
+        "latency_seconds": 5.144,
+        "estimated_cost_usd": 0.000307
+      }
+    }
+  ]
+}

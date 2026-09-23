@@ -1,0 +1,91 @@
+[
+  {
+    "id": "case_01_nominal_t3_chartrons",
+    "category": "nominal",
+    "description": "Appartement T3 Bordeaux avec critères complets et DPE fidèle au registre",
+    "listing_text": "Bordeaux Chartrons - Bel appartement T3 de 68.4 m2 dans résidence de 2005 au calme. Pièce de vie lumineuse, cuisine aménagée, 2 chambres, terrasse et parking privatif. DPE réalisé le 15/01/2024 : 181.4 kWh/m2/an. Prix: 265 000 euros frais d'agence inclus.",
+    "expected_criteria": {
+      "city": "Bordeaux",
+      "surface_sqm": 68.4,
+      "dpe_kwh_sqm_year": 181.4,
+      "dpe_date": "15/01/2024",
+      "construction_year": 2005,
+      "listed_price": 265000.0
+    },
+    "expected_address_keywords": ["101", "Prunier"],
+    "expected_min_confidence": "HIGH"
+  },
+  {
+    "id": "case_02_studio_chartrons_noisy",
+    "category": "noisy_format",
+    "description": "Studio avec texte abrégé et style télégraphique",
+    "listing_text": "Bdx Chartrons studio 21.3m2 idéal investisseur pierre bordelaise rdc séjour kitchenette sde wc. DPE 518.7 kwh/m2/an date dpe 19/11/2021. 95000€ FAI",
+    "expected_criteria": {
+      "city": "Bordeaux",
+      "surface_sqm": 21.3,
+      "dpe_kwh_sqm_year": 518.7,
+      "dpe_date": "19/11/2021",
+      "listed_price": 95000.0
+    },
+    "expected_address_keywords": ["16", "Prunier"],
+    "expected_min_confidence": "HIGH"
+  },
+  {
+    "id": "case_03_family_apartment_balguerie",
+    "category": "nominal",
+    "description": "Grand appartement familial sur cours avec date et période de construction",
+    "listing_text": "BORDEAUX CHARTRONS - Cours Balguerie Stuttenberg. Spacieux T4 traversant de 89.1 m2 comprenant salon séjour, cuisine indépendante, 3 chambres, balcon. Résidence des années 90 bien entretenue. DPE du 01/12/2023 : consommation énergie 204.1 kWh/m²/an. Prix : 320 000 €.",
+    "expected_criteria": {
+      "city": "Bordeaux",
+      "surface_sqm": 89.1,
+      "dpe_kwh_sqm_year": 204.1,
+      "dpe_date": "01/12/2023",
+      "listed_price": 320000.0
+    },
+    "expected_address_keywords": ["17", "Balguerie"],
+    "expected_min_confidence": "HIGH"
+  },
+  {
+    "id": "case_04_missing_optional_fields",
+    "category": "missing_fields",
+    "description": "Annonce omettant la date de réalisation du DPE et l'année de construction",
+    "listing_text": "Bordeaux secteur Chartrons. Appartement 4 pièces récent de 89 m² avec grand séjour et cuisine équipée, 3 chambres, terrasse. Performance énergétique remarquable DPE C (83.6 kWh/m²/an). Prix 340 000 €.",
+    "expected_criteria": {
+      "city": "Bordeaux",
+      "surface_sqm": 89.0,
+      "dpe_kwh_sqm_year": 83.6,
+      "listed_price": 340000.0
+    },
+    "expected_address_keywords": ["107", "Prunier"],
+    "expected_min_confidence": "MEDIUM"
+  },
+  {
+    "id": "case_05_large_stone_townhouse",
+    "category": "large_surface",
+    "description": "Grande maison en pierre de plus de 150m2 avec date DPE",
+    "listing_text": "Bordeaux Chartrons. Superbe maison de ville en pierre de 152.9 m² avec jardin arboré et prestations anciennes conservées. 4 chambres, suite parentale, cave. DPE réalisé le 25/03/2022 affichant 127.3 kWh/m²/an. Prix : 780 000 €.",
+    "expected_criteria": {
+      "city": "Bordeaux",
+      "surface_sqm": 152.9,
+      "dpe_kwh_sqm_year": 127.3,
+      "dpe_date": "25/03/2022",
+      "listed_price": 780000.0
+    },
+    "expected_address_keywords": ["80", "Prunier"],
+    "expected_min_confidence": "HIGH"
+  },
+  {
+    "id": "case_06_adversarial_impossible_data",
+    "category": "adversarial",
+    "description": "Annonce fictive avec valeurs impossibles (doit déclencher LOW confidence sans hallucination)",
+    "listing_text": "Superbe château contemporain de 490 m² en plein coeur de Bordeaux, DPE A avec consommation de 11.2 kWh/m²/an, construit en 2026. Prix: 2 500 000 €.",
+    "expected_criteria": {
+      "city": "Bordeaux",
+      "surface_sqm": 490.0,
+      "dpe_kwh_sqm_year": 11.2,
+      "listed_price": 2500000.0
+    },
+    "expected_address_keywords": [],
+    "expected_min_confidence": "LOW"
+  }
+]
