@@ -1,6 +1,6 @@
 """Scoring logic for evaluating AI Agent outputs against Golden Dataset ground truth."""
 
-from app.schemas.listing import ImmoAnalysisResult
+from app.schemas import PropertyAnalysisReport
 from app.schemas.telemetry import ExecutionTelemetry
 from tests.evals.schemas import (
     AddressMatchScore,
@@ -17,7 +17,7 @@ class ListingScorer:
     DPE_TOLERANCE_KWH: float = 2.0
     CONFIDENCE_HIERARCHY: dict[str, int] = {"LOW": 1, "MEDIUM": 2, "HIGH": 3}
 
-    def score_extraction(self, case: TestCase, result: ImmoAnalysisResult) -> ExtractionScore:
+    def score_extraction(self, case: TestCase, result: PropertyAnalysisReport) -> ExtractionScore:
         """Compare extracted listing parameters against expected criteria."""
         extracted = result.extracted_criteria
         expected = case.expected_criteria
@@ -33,7 +33,7 @@ class ListingScorer:
             all_criteria_extracted=(city_ok and surface_ok and dpe_ok),
         )
 
-    def score_address_matching(self, case: TestCase, result: ImmoAnalysisResult) -> AddressMatchScore:
+    def score_address_matching(self, case: TestCase, result: PropertyAnalysisReport) -> AddressMatchScore:
         """Evaluate whether retrieved addresses contain expected street keywords (Top-1 / Top-3)."""
         expected_keywords = [k.lower() for k in case.expected_address_keywords]
 
@@ -66,7 +66,7 @@ class ListingScorer:
             top_candidate=result.probable_addresses[0].address if result.probable_addresses else None,
         )
 
-    def score_confidence(self, case: TestCase, result: ImmoAnalysisResult) -> bool:
+    def score_confidence(self, case: TestCase, result: PropertyAnalysisReport) -> bool:
         """Verify that agent confidence matches or exceeds expectations."""
         if not case.expected_address_keywords:
             return result.confidence_level == "LOW"
@@ -78,7 +78,7 @@ class ListingScorer:
     def evaluate(
         self,
         case: TestCase,
-        result: ImmoAnalysisResult,
+        result: PropertyAnalysisReport,
         telemetry: ExecutionTelemetry,
     ) -> CaseResult:
         """Aggregate all evaluation dimensions for a single test case."""
