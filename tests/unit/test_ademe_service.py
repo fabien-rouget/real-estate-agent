@@ -1,13 +1,13 @@
-"""Unit tests for the ADEME search tool adapter and ranking logic."""
+"""Unit tests for the ADEME business service (Lucene query builder, ranking, and graceful degradation)."""
 
 from datetime import date
 
 from app.schemas.ademe import AdemeDpeRecord
-from app.services.ademe_service import _parse_date, search_ademe_dpe
+from app.services.ademe_service import _build_lucene_query, _parse_date, search_ademe_dpe
 
 
-class TestAdemeToolLogic:
-    """Test suite for tool functions and candidate ranking."""
+class TestAdemeServiceLogic:
+    """Test suite for ADEME query construction, candidate ranking, and API outage handling."""
 
     def test_parse_date_formats(self):
         """Test parsing of multiple standard date string formats."""
@@ -18,6 +18,22 @@ class TestAdemeToolLogic:
         assert _parse_date("") is None
         assert _parse_date("not-a-date") is None
 
+    def test_build_lucene_query_and_city_sanitization(self):
+        """Ensure city names are sanitized and Lucene range filters are properly assembled."""
+        query = _build_lucene_query(
+            city='  "Bordeaux"  ',
+            min_surface=88.0,
+            max_surface=92.0,
+            min_kwh=192.0,
+            max_kwh=212.0,
+            min_date="2026-04-09",
+            max_date="2026-05-09",
+        )
+        assert 'nom_commune_ban:"Bordeaux"' in query
+        assert "surface_habitable_logement:[88.0 TO 92.0]" in query
+        assert "conso_5_usages_par_m2_ep:[192.0 TO 212.0]" in query
+        assert "date_etablissement_dpe:[2026-04-09 TO 2026-05-09]" in query
+
     def test_search_ademe_dpe_ranking_and_matching(self, mocker):
         """Verify candidate scoring, tolerance margins, and matching levels."""
         candidate_1 = AdemeDpeRecord(
@@ -25,9 +41,9 @@ class TestAdemeToolLogic:
             address="10 Rue de la Paix 33000 Bordeaux",
             postal_code="33000",
             city="Bordeaux",
-            surface_sqm=90.2,  # diff: 0.2m²
-            dpe_kwh_sqm_year=203.0,  # diff: 1.0 kWh
-            dpe_date="2026-04-20",  # 4 days difference with target
+            surface_sqm=90.2,
+            dpe_kwh_sqm_year=203.0,
+            dpe_date="2026-04-20",
             construction_period="2001-2005",
         )
         candidate_2 = AdemeDpeRecord(
@@ -35,16 +51,15 @@ class TestAdemeToolLogic:
             address="50 Avenue de la République 33000 Bordeaux",
             postal_code="33000",
             city="Bordeaux",
-            surface_sqm=91.8,  # diff: 1.8m²
-            dpe_kwh_sqm_year=210.0,  # diff: 8.0 kWh
-            dpe_date="2024-01-10",  # far date
+            surface_sqm=91.8,
+            dpe_kwh_sqm_year=210.0,
+            dpe_date="2024-01-10",
             construction_period="1948-1974",
         )
 
-        # Mock the client so no network call is made
         mocker.patch(
             "app.services.ademe_service._ademe_client.fetch_dpe_records",
-            return_value=[candidate_2, candidate_1],  # intentionally out of order
+            return_value=[candidate_2, candidate_1],
         )
 
         results = search_ademe_dpe(
@@ -59,7 +74,6 @@ class TestAdemeToolLogic:
 
         assert len(results) == 2
 
-        # Verify exact match is ranked #1 (lowest composite score)
         first = results[0]
         second = results[1]
 
@@ -71,3 +85,16 @@ class TestAdemeToolLogic:
 
         assert second["dpe_id"] == "APPROX_MATCH"
         assert second["matching_level"] == "APPROXIMATE"
+
+    def test_search_ademe_dpe_graceful_degradation_on_api_outage(self, mocker):
+        """Ensure API outage returns a structured ERROR dict instead of a misleading empty list."""
+        mocker.patch(
+            "app.services.ademe_service._ademe_client.fetch_dpe_records",
+            side_effect=RuntimeError("ADEME API unavailable after 3 attempts"),
+        )
+
+        results = search_ademe_dpe(city="Bordeaux", surface=79.2, energy_letter="C")
+
+        assert len(results) == 1
+        assert results[0]["status"] == "ERROR"
+        assert "temporairement indisponible" in results[0]["error"]

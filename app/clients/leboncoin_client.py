@@ -1,15 +1,22 @@
-"""HTTP client for fetching raw property listings from the official Leboncoin mobile API."""
+"""Pure HTTP client for the Leboncoin API with Tenacity retry and Pydantic deserialization."""
 
 import logging
-import re
 
 import requests
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
+
+from app.schemas.listing import LeboncoinAdRecord
 
 logger = logging.getLogger(__name__)
 
 
 class LeboncoinClient:
-    """Client for retrieving raw classified ads directly from Leboncoin."""
+    """HTTP transport client for retrieving and deserializing ads from Leboncoin."""
 
     BASE_URL = "https://api.leboncoin.fr/finder/classified"
     DEFAULT_HEADERS = {
@@ -20,35 +27,27 @@ class LeboncoinClient:
     def __init__(self, timeout: int = 12):
         self.timeout = timeout
 
-    @staticmethod
-    def _extract_ad_id(url_or_id: str) -> str:
-        """Extract numeric ad ID from a Leboncoin URL or raw ID string."""
-        clean_input = url_or_id.strip()
-        if clean_input.isdigit():
-            return clean_input
-
-        match = re.search(r"/(\d+)(?:[/?#]|$)", clean_input)
-        if match:
-            return match.group(1)
-
-        raise ValueError(f"Could not extract a valid Leboncoin ad ID from '{url_or_id}'.")
-
-    def get_listing_raw(self, url_or_id: str) -> str:
-        """Fetch raw JSON string from Leboncoin API for a given URL or ad ID.
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=8),
+        retry=retry_if_exception_type(RuntimeError),
+        reraise=True,
+    )
+    def fetch_ad(self, ad_id: str) -> LeboncoinAdRecord:
+        """Fetch an ad by its numeric ID and deserialize it into a LeboncoinAdRecord DTO.
 
         Args:
-            url_or_id: Full Leboncoin listing URL or raw ad ID string.
+            ad_id: Numeric Leboncoin ad identifier (e.g. '3271779569').
 
         Returns:
-            Raw JSON string payload directly from the API.
+            Validated LeboncoinAdRecord instance (with noisy fields automatically ignored).
 
         Raises:
-            ValueError: If the ad ID is invalid or listing was not found (404).
-            RuntimeError: In case of API HTTP error or network failure.
+            ValueError: If the ad does not exist or was removed (HTTP 404/410) — non-retryable.
+            RuntimeError: On network error or transient 5xx/429 status code (retried up to 3 times).
         """
-        ad_id = self._extract_ad_id(url_or_id)
         endpoint = f"{self.BASE_URL}/{ad_id}"
-        logger.info("Calling Leboncoin mobile API for ad_id=%s", ad_id)
+        logger.info("Calling Leboncoin API for ad_id=%s", ad_id)
 
         try:
             response = requests.get(
@@ -66,4 +65,4 @@ class LeboncoinClient:
         if response.status_code != 200:
             raise RuntimeError(f"Leboncoin API error ({response.status_code}): {response.text[:200]}")
 
-        return response.text
+        return LeboncoinAdRecord.model_validate(response.json())

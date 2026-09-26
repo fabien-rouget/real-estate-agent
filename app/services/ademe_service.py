@@ -1,4 +1,4 @@
-"""Business service layer implementing DPE registry search, date windowing, and candidate ranking algorithms."""
+"""Business service layer implementing DPE Lucene query construction, date fallback, candidate ranking, and graceful failure."""
 
 import logging
 from datetime import date, datetime, timedelta
@@ -35,6 +35,31 @@ def _parse_date(date_str: str | None) -> date | None:
     return None
 
 
+def _build_lucene_query(
+    city: str,
+    min_surface: float,
+    max_surface: float,
+    min_kwh: float | None = None,
+    max_kwh: float | None = None,
+    min_date: str | None = None,
+    max_date: str | None = None,
+) -> str:
+    """Construct the DataFair Lucene query string from business criteria."""
+    clean_city = city.strip().replace('"', "")
+    query_parts = [
+        f'nom_commune_ban:"{clean_city}"',
+        f"surface_habitable_logement:[{min_surface} TO {max_surface}]",
+    ]
+
+    if min_kwh is not None and max_kwh is not None:
+        query_parts.append(f"conso_5_usages_par_m2_ep:[{min_kwh} TO {max_kwh}]")
+
+    if min_date is not None and max_date is not None:
+        query_parts.append(f"date_etablissement_dpe:[{min_date} TO {max_date}]")
+
+    return " AND ".join(query_parts)
+
+
 def search_ademe_dpe(
     city: str,
     surface: float,
@@ -58,15 +83,14 @@ def search_ademe_dpe(
         dpe_date: Date of DPE realization stated in the listing (e.g. '10/12/2025' or '2025-12-10').
         construction_year: Building construction year if known (e.g. 2010).
         tolerance_surface: Acceptable surface margin in m² (default: 2.0).
-        tolerance_kwh: Margin in kWh/m²/year when exact dpe_kwh is provided (default: 15.0).
+        tolerance_kwh: Margin in kWh/m²/year when exact dpe_kwh is provided (default: 10.0).
 
     Returns:
-        List of matching candidate records sorted by matching quality.
+        List of matching candidate records sorted by matching quality, or an ERROR status object on API failure.
     """
     min_surface = max(1.0, round(float(surface) - float(tolerance_surface), 2))
     max_surface = round(float(surface) + float(tolerance_surface), 2)
 
-    # Resolve kWh boundaries from exact value or letter range
     min_kwh: float | None = None
     max_kwh: float | None = None
 
@@ -82,40 +106,41 @@ def search_ademe_dpe(
     min_date = (target_date - timedelta(days=15)).isoformat() if target_date else None
     max_date = (target_date + timedelta(days=15)).isoformat() if target_date else None
 
-    logger.info(
-        "Querying ADEME DPE registry: city=%s, surface=[%s - %s] m², DPE=[%s - %s] kWh/m²/year (letter=%s), date_window=[%s to %s]",
-        city,
-        min_surface,
-        max_surface,
-        min_kwh,
-        max_kwh,
-        energy_letter,
-        min_date,
-        max_date,
-    )
-
-    records = _ademe_client.fetch_dpe_records(
-        city=city,
-        min_surface=min_surface,
-        max_surface=max_surface,
-        min_kwh=min_kwh,
-        max_kwh=max_kwh,
-        min_date=min_date,
-        max_date=max_date,
-        size=50,
-    )
-
-    # Fallback to query without date constraint if date window yielded 0 results
-    if not records and target_date:
-        logger.info("Date window yielded 0 results; falling back to query without date constraint...")
-        records = _ademe_client.fetch_dpe_records(
+    try:
+        initial_query = _build_lucene_query(
             city=city,
             min_surface=min_surface,
             max_surface=max_surface,
             min_kwh=min_kwh,
             max_kwh=max_kwh,
-            size=50,
+            min_date=min_date,
+            max_date=max_date,
         )
+        records = _ademe_client.fetch_dpe_records(lucene_query=initial_query, size=50)
+
+        # Fallback business rule: retry without date window if ±15 days yielded 0 results
+        if not records and target_date:
+            logger.info("Date window yielded 0 results; falling back to query without date constraint...")
+            fallback_query = _build_lucene_query(
+                city=city,
+                min_surface=min_surface,
+                max_surface=max_surface,
+                min_kwh=min_kwh,
+                max_kwh=max_kwh,
+            )
+            records = _ademe_client.fetch_dpe_records(lucene_query=fallback_query, size=50)
+
+    except Exception as exc:
+        logger.error("ADEME service degraded after retries: %s", exc)
+        return [
+            {
+                "status": "ERROR",
+                "error": (
+                    f"Le registre officiel ADEME DPE est temporairement indisponible ({exc}). "
+                    "Positionnez confidence_level sur 'LOW' et mentionnez cette indisponibilité technique dans la synthèse."
+                ),
+            }
+        ]
 
     results: list[dict[str, Any]] = []
 
@@ -123,7 +148,6 @@ def search_ademe_dpe(
         diff_surface = round(abs(record.surface_sqm - surface), 2)
         diff_kwh = round(abs(record.dpe_kwh_sqm_year - dpe_kwh), 2) if (dpe_kwh and dpe_kwh > 0) else 0.0
 
-        # Date comparison
         record_date = _parse_date(record.dpe_date)
         days_diff = None
         date_is_exact = False
@@ -133,15 +157,11 @@ def search_ademe_dpe(
             date_is_exact = days_diff == 0
             date_matches_closely = days_diff <= 15
 
-        # Construction period comparison
         year_matches = False
         if construction_year and record.construction_period:
-            period_str = record.construction_period.lower()
-            year_str = str(construction_year)
-            if year_str in period_str:
+            if str(construction_year) in record.construction_period.lower():
                 year_matches = True
 
-        # Confidence categorization
         if (
             (date_is_exact and diff_surface <= 0.5)
             or (diff_surface <= 0.5 and diff_kwh <= 3.0 and (date_matches_closely or year_matches))
@@ -153,14 +173,13 @@ def search_ademe_dpe(
         else:
             matching = "APPROXIMATE"
 
-        # Ranking score: lower is better
         score = diff_surface * 3.0
         if dpe_kwh and dpe_kwh > 0:
             score += diff_kwh * 0.15
 
         if days_diff is not None:
             if date_is_exact:
-                score -= 10.0  # Massive priority for exact diagnostic date
+                score -= 10.0
             elif date_matches_closely:
                 score -= 4.0
             else:
@@ -188,10 +207,7 @@ def search_ademe_dpe(
             }
         )
 
-    # Sort results by composite matching score
     results.sort(key=lambda item: item["_score"])
-
-    # Clean internal score key before returning to LLM
     for item in results:
         item.pop("_score", None)
 

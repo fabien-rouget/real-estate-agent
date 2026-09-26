@@ -1,10 +1,64 @@
-"""Pydantic schema for technical criteria extracted from a real estate listing (Step 1)."""
+"""Pydantic schemas for Leboncoin API deserialization and extracted listing criteria (Step 1)."""
+
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class LeboncoinLocation(BaseModel):
+    """Location subset deserialized from the Leboncoin API (ignores heavy GeoJSON features)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    city: str | None = None
+    zipcode: str | None = None
+    district: str | None = None
+    city_label: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+
+
+class LeboncoinAttribute(BaseModel):
+    """Single technical attribute (surface, DPE, rooms, etc.) from a Leboncoin ad."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    key: str
+    key_label: str | None = None
+    value: str | None = None
+    value_label: str | None = None
+
+
+class LeboncoinAdRecord(BaseModel):
+    """Raw classified ad deserialized from the Leboncoin API.
+
+    Uses `extra='ignore'` to automatically discard heavy fields (image URL galleries,
+    seller tracking metadata, payment options, similar ads) and protect the LLM token budget.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    list_id: int | str
+    subject: str = ""
+    body: str = ""
+    price: list[float] | float | None = None
+    first_publication_date: str | None = None
+    index_date: str | None = None
+    location: LeboncoinLocation | None = None
+    attributes: list[LeboncoinAttribute] = Field(default_factory=list)
+
+    @property
+    def compact_attributes(self) -> dict[str, Any]:
+        """Return a flat, readable dictionary of technical attributes for the LLM."""
+        return {
+            (attr.key_label or attr.key): (attr.value_label or attr.value)
+            for attr in self.attributes
+            if attr.value or attr.value_label
+        }
+
+
 class ListingExtractedCriteria(BaseModel):
-    """Key technical parameters extracted from the raw property listing (Leboncoin or text)."""
+    """Key technical parameters extracted by the agent from the property listing."""
 
     model_config = ConfigDict(populate_by_name=True)
 
