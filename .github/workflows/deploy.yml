@@ -63,5 +63,7 @@ jobs:
           adk deploy agent_engine app \
             --project=real-estate-agent-509518 \
             --region=europe-west1 \
+            --agent_engine_id=4193119533919109120 \
             --display_name="real-estate-agent" \
             --otel_to_cloud
+

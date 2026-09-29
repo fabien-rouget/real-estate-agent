@@ -1,5 +1,5 @@
 # Core Google ADK & Cloud
-google-adk>=2.9.0
+google-adk[mcp]>=2.9.2
 google-genai>=2.20.0
 pydantic>=2.10.0
 requests>=2.32.0
