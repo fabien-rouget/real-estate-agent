@@ -98,3 +98,101 @@ class TestAdemeServiceLogic:
         assert len(results) == 1
         assert results[0]["status"] == "ERROR"
         assert "temporairement indisponible" in results[0]["error"]
+
+    def test_search_ademe_dpe_rounded_surface_exact_date_is_exact(self, mocker):
+        """Ensure a rounded integer surface (e.g. 100 vs 100.7 m2) with exact DPE date and kWh is classified as EXACT."""
+        candidate = AdemeDpeRecord(
+            dpe_id="2633E1780039N",
+            address="4 Rue Simone de Beauvoir 33270 Floirac",
+            address_complement="Bâtiment B - Apt 34 - 3ème étage",
+            postal_code="33270",
+            city="Floirac",
+            surface_sqm=100.7,
+            dpe_kwh_sqm_year=70.0,
+            dpe_date="2026-07-01",
+            construction_period="après 2021",
+        )
+
+        mocker.patch(
+            "app.services.ademe_service._ademe_client.fetch_dpe_records",
+            return_value=[candidate],
+        )
+
+        results = search_ademe_dpe(
+            city="Floirac",
+            surface=100.0,
+            dpe_kwh=70.0,
+            dpe_date="01/07/2026",
+            construction_year=2022,
+        )
+
+        assert len(results) == 1
+        assert results[0]["dpe_id"] == "2633E1780039N"
+        assert results[0]["surface_diff"] == 0.7
+        assert results[0]["kwh_diff"] == 0.0
+        assert results[0]["days_diff"] == 0
+        assert results[0]["matching_level"] == "EXACT"
+
+    def test_search_ademe_dpe_letter_range_filtering(self, mocker):
+        """Ensure candidates outside the energy letter range are excluded."""
+        # Class B: [71, 110] kWh/m2/year
+        valid_b = AdemeDpeRecord(
+            dpe_id="VALID_B",
+            address="5 Rue Paule Marrot 33300 Bordeaux",
+            surface_sqm=84.9,
+            dpe_kwh_sqm_year=77.6,
+            energy_rating="B",
+            dpe_date="2024-01-23",
+        )
+        invalid_c = AdemeDpeRecord(
+            dpe_id="INVALID_C",
+            address="10 Rue Inconnue 33300 Bordeaux",
+            surface_sqm=84.0,
+            dpe_kwh_sqm_year=160.0,
+            energy_rating="C",
+            dpe_date="2024-01-23",
+        )
+
+        mocker.patch(
+            "app.services.ademe_service._ademe_client.fetch_dpe_records",
+            return_value=[invalid_c, valid_b],
+        )
+
+        results = search_ademe_dpe(
+            city="Bordeaux",
+            surface=84.0,
+            energy_letter="B",
+            dpe_date="23/01/2024",
+        )
+
+        assert len(results) == 1
+        assert results[0]["dpe_id"] == "VALID_B"
+
+    def test_search_ademe_dpe_date_variation_1_to_2_days_is_exact(self, mocker):
+        """Ensure a 1 to 2 days difference between ad date and ADEME certificate is classified as EXACT."""
+        candidate = AdemeDpeRecord(
+            dpe_id="CANDIDATE_2_DAYS_DIFF",
+            address="5 Rue Paule Marrot 33300 Bordeaux",
+            surface_sqm=84.5,
+            dpe_kwh_sqm_year=77.6,
+            energy_rating="B",
+            dpe_date="2024-01-25",  # 2 days after 2024-01-23
+        )
+
+        mocker.patch(
+            "app.services.ademe_service._ademe_client.fetch_dpe_records",
+            return_value=[candidate],
+        )
+
+        results = search_ademe_dpe(
+            city="Bordeaux",
+            surface=84.0,
+            energy_letter="B",
+            dpe_date="23/01/2024",
+        )
+
+        assert len(results) == 1
+        assert results[0]["dpe_id"] == "CANDIDATE_2_DAYS_DIFF"
+        assert results[0]["days_diff"] == 2
+        assert results[0]["matching_level"] == "EXACT"
+

@@ -58,6 +58,16 @@ class AdemeDpeRecord(BaseModel):
         alias="date_etablissement_dpe",
         description="Official date of DPE issuance (YYYY-MM-DD)",
     )
+    inspection_date: str | None = Field(
+        default=None,
+        alias="date_visite_diagnostiqueur",
+        description="Physical inspection date on site (YYYY-MM-DD)",
+    )
+    floor: int | None = Field(
+        default=None,
+        alias="numero_etage_appartement",
+        description="Floor level of the apartment (0 for ground floor)",
+    )
     construction_period: str | None = Field(
         default=None,
         alias="periode_construction",
@@ -75,9 +85,28 @@ class AdemeDpeRecord(BaseModel):
     )
 
     @property
+    def residence_name(self) -> str | None:
+        """Extract residence or building complex name if present in raw address."""
+        if not self.address_raw:
+            return None
+        import re
+        match = re.search(r"(?:résidence|domaine|clos|villa|hameau)\s+[^,0-9\n]+", self.address_raw, re.IGNORECASE)
+        if match:
+            return match.group(0).strip()
+        return None
+
+    @property
     def resolved_address(self) -> str:
-        """Returns the best available street address string, including complement if present."""
+        """Returns the best available street address string, including complement and residence if present."""
         base = (self.address or self.address_raw or "Address not specified").strip()
+        residence = self.residence_name
+        if residence and residence.lower() not in base.lower():
+            if self.postal_code and self.postal_code in base:
+                parts = base.split(self.postal_code, 1)
+                prefix = parts[0].rstrip(", ")
+                base = f"{prefix}, {residence}, {self.postal_code}{parts[1]}".strip()
+            else:
+                base = f"{base}, {residence}"
         if self.address_complement:
             return f"{base}, {self.address_complement.strip()}"
         return base

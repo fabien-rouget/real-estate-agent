@@ -45,6 +45,22 @@ class TestAdemeSchemas:
         record = AdemeDpeRecord.model_validate(raw)
         assert record.resolved_address == "12 Rue des Lilas"
 
+    def test_ademe_record_residence_name_extraction(self):
+        """Ensure residence name is extracted and integrated into resolved_address."""
+        raw = {
+            "numero_dpe": "2433E0253756G",
+            "adresse_ban": "5 Rue Paule Marrot 33300 Bordeaux",
+            "adresse_brut": "Résidence Natura 5 rue Paule Marrot",
+            "complement_adresse_logement": "Etage RDC;",
+            "code_postal_ban": "33300",
+            "nom_commune_ban": "Bordeaux",
+            "surface_habitable_logement": 84.9,
+            "conso_5_usages_par_m2_ep": 77.6,
+        }
+        record = AdemeDpeRecord.model_validate(raw)
+        assert record.residence_name == "Résidence Natura"
+        assert record.resolved_address == "5 Rue Paule Marrot, Résidence Natura, 33300 Bordeaux, Etage RDC;"
+
 
 class TestAnalysisSchemas:
     """Test suite for agent structured input/output contracts."""
